@@ -108,15 +108,6 @@ class _LogConsoleState extends State<LogConsole> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: widget.dark
-          ? ThemeData(
-              brightness: Brightness.dark,
-              colorScheme: ColorScheme.fromSwatch().copyWith(secondary: Colors.blueGrey),
-            )
-          : ThemeData(
-              brightness: Brightness.light,
-              colorScheme: ColorScheme.fromSwatch().copyWith(secondary: Colors.lightBlueAccent),
-            ),
       home: Scaffold(
         body: SafeArea(
           child: Column(
@@ -155,17 +146,19 @@ class _LogConsoleState extends State<LogConsole> {
       scrollDirection: Axis.horizontal,
       child: SizedBox(
         width: 1600,
-        child: ListView.builder(
-          controller: _scrollController,
-          itemBuilder: (context, index) {
-            var logEntry = _filteredBuffer[index];
-            return Text.rich(
-              logEntry.span,
-              key: Key(logEntry.id.toString()),
-              style: TextStyle(fontSize: _logFontSize),
-            );
-          },
-          itemCount: _filteredBuffer.length,
+        child: SelectionArea(
+          child: ListView.builder(
+            controller: _scrollController,
+            itemBuilder: (context, index) {
+              var logEntry = _filteredBuffer[index];
+              return Text.rich(
+                logEntry.span,
+                key: Key(logEntry.id.toString()),
+                style: TextStyle(fontSize: _logFontSize),
+              );
+            },
+            itemCount: _filteredBuffer.length,
+          ),
         ),
       ),
     );
@@ -246,7 +239,7 @@ class _LogConsoleState extends State<LogConsole> {
       sb.writeln(event.lines.join('\n'));
     });
     Directory tempDir = await getTemporaryDirectory();
-    final filePath = '${tempDir.path}/${DateTime.now()}.log';
+    final filePath = '${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.log';
     final file = File(filePath);
 
     await file.writeAsString(sb.toString());

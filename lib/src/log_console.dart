@@ -29,8 +29,9 @@ class _ConsoleOutput extends LogOutput {
 class LogConsole extends StatefulWidget {
   final bool dark;
   final bool showCloseButton;
+  final VoidCallback? onClose;
 
-  LogConsole({this.dark = false, this.showCloseButton = false});
+  LogConsole({this.dark = false, this.showCloseButton = false, this.onClose});
 
   @override
   _LogConsoleState createState() => _LogConsoleState();
@@ -198,7 +199,7 @@ class _LogConsoleState extends State<LogConsole> {
             IconButton(
               icon: Icon(Icons.close),
               onPressed: () {
-                Navigator.pop(context);
+                widget.onClose?.call();
               },
             ),
         ],

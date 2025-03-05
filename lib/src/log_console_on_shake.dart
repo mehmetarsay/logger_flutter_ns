@@ -66,12 +66,22 @@ class _LogConsoleOnShakeState extends State<LogConsoleOnShake> {
 
     _overlayEntry = OverlayEntry(
       builder: (context) => Material(
-        color: Colors.black.withOpacity(0.5),
-        child: SafeArea(
+        color: Colors.black.withOpacity(0.9),
+        child: InteractiveViewer(
+          minScale: 0.5,
+          maxScale: 3.0,
           child: Container(
             width: MediaQuery.of(context).size.width,
             height: MediaQuery.of(context).size.height,
-            child: logConsole,
+            child: Theme(
+              data: ThemeData.dark().copyWith(
+                textTheme: ThemeData.dark().textTheme.apply(
+                      bodyColor: Colors.white,
+                      displayColor: Colors.white,
+                    ),
+              ),
+              child: logConsole,
+            ),
           ),
         ),
       ),

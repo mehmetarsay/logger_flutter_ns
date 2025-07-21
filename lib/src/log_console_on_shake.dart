@@ -16,7 +16,7 @@ class LogConsoleOnShake extends StatefulWidget {
 }
 
 class _LogConsoleOnShakeState extends State<LogConsoleOnShake> {
-  late ShakeDetector _detector;
+  ShakeDetector? _detector;
   bool _open = false;
   OverlayEntry? _overlayEntry;
   static final Set<Key> _activeKeys = {};
@@ -42,7 +42,7 @@ class _LogConsoleOnShakeState extends State<LogConsoleOnShake> {
 
   _init() {
     _detector = ShakeDetector(onPhoneShake: _openLogConsole);
-    _detector.startListening();
+    _detector?.startListening();
   }
 
   _openLogConsole() {
@@ -106,7 +106,7 @@ class _LogConsoleOnShakeState extends State<LogConsoleOnShake> {
 
   @override
   void dispose() {
-    _detector.stopListening();
+    _detector?.stopListening();
     if (_overlayEntry != null) {
       _overlayEntry!.remove();
       _overlayEntry = null;

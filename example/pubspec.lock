@@ -144,13 +144,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.5.0"
-  logger_flutter_ns:
+  logger_flutter_ns_v1:
     dependency: "direct main"
     description:
       path: ".."
       relative: true
     source: path
-    version: "0.1.4"
+    version: "0.2.0"
   logging:
     dependency: transitive
     description:

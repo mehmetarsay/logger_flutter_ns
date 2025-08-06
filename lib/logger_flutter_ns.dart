@@ -1,4 +1,4 @@
-library logger_flutter_ns;
+library logger_flutter_ns_v1;
 
 import 'dart:collection';
 import 'dart:developer';
@@ -7,7 +7,7 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
-import 'package:logger_flutter_ns/src/shake_detector.dart';
+import 'package:logger_flutter_ns_v1/src/shake_detector.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 

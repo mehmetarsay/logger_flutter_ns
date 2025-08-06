@@ -1,4 +1,4 @@
-part of logger_flutter_ns;
+part of logger_flutter_ns_v1;
 
 ListQueue<OutputEvent> _outputEventBuffer = ListQueue();
 

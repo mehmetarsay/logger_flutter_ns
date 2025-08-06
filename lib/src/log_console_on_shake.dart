@@ -1,5 +1,10 @@
 part of logger_flutter_ns_v1;
 
+ValueNotifier<bool> _logConsoleOpen = ValueNotifier<bool>(false);
+
+void _openLogConsole() => _logConsoleOpen.value = true;
+void _hideLogConsole() => _logConsoleOpen.value = false;
+
 class LogConsoleOnShake extends StatefulWidget {
   final Widget child;
   final bool debugOnly;
@@ -25,31 +30,20 @@ class LogConsoleOnShake extends StatefulWidget {
 
 class _LogConsoleOnShakeState extends State<LogConsoleOnShake> {
   ShakeDetector? _detector;
-  bool _open = false;
-  OverlayEntry? _overlayEntry;
-  static final Set<Key> _activeKeys = {};
-
   bool _showDraggableButton = false;
   Offset _buttonPosition = const Offset(20, 100);
 
   @override
   void initState() {
     super.initState();
-
     _buttonPosition = widget.initialButtonPosition;
-
-    if (widget.debugOnly) {
-      assert(() {
-        _init();
-        return true;
-      }());
-    } else {
-      _init();
-    }
+    if (widget.debugOnly && !kDebugMode) return;
+    _init();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.debugOnly && !kDebugMode) return widget.child;
     return Stack(
       children: [
         widget.child,
@@ -95,82 +89,29 @@ class _LogConsoleOnShakeState extends State<LogConsoleOnShake> {
               ),
             ),
           ),
+        ValueListenableBuilder(
+          valueListenable: _logConsoleOpen,
+          builder: (context, isOpen, child) {
+            return isOpen
+                ? LogConsole(
+                    showCloseButton: true,
+                    dark: Theme.of(context).brightness == Brightness.dark,
+                    onClose: _hideLogConsole,
+                  )
+                : SizedBox.shrink();
+          },
+        ),
       ],
     );
   }
 
   _init() {
     if (!mounted) return;
-
     _detector = ShakeDetector(onPhoneShake: _openLogConsole);
     _detector?.startListening();
-
     if (widget.showDraggableButton || !(_detector?.isListening ?? false)) {
-      setState(() {
-        _showDraggableButton = true;
-      });
+      setState(() => _showDraggableButton = true);
     }
-  }
-
-  _openLogConsole() {
-    if (_open || !mounted) return;
-
-    if (widget.key != null && _activeKeys.contains(widget.key)) {
-      return;
-    }
-
-    if (widget.key != null) {
-      _activeKeys.add(widget.key!);
-    }
-
-    _open = true;
-
-    var logConsole = LogConsole(
-      showCloseButton: true,
-      dark: Theme.of(context).brightness == Brightness.dark,
-      onClose: _closeLogConsole,
-    );
-
-    _overlayEntry = OverlayEntry(
-      builder: (context) => Material(
-        color: Colors.black.withOpacity(0.9),
-        child: InteractiveViewer(
-          minScale: 0.5,
-          maxScale: 3.0,
-          child: Container(
-            width: MediaQuery.of(context).size.width,
-            height: MediaQuery.of(context).size.height,
-            child: Theme(
-              data: ThemeData.dark().copyWith(
-                textTheme: ThemeData.dark().textTheme.apply(
-                      bodyColor: Colors.white,
-                      displayColor: Colors.white,
-                    ),
-              ),
-              child: logConsole,
-            ),
-          ),
-        ),
-      ),
-    );
-
-    if (context.mounted) {
-      Overlay.of(context).insert(_overlayEntry!);
-    }
-  }
-
-  _closeLogConsole() {
-    if (widget.key != null) {
-      _activeKeys.remove(widget.key);
-    }
-
-    if (_overlayEntry != null) {
-      try {
-        _overlayEntry!.remove();
-      } catch (e) {}
-      _overlayEntry = null;
-    }
-    _open = false;
   }
 
   @override
@@ -179,18 +120,6 @@ class _LogConsoleOnShakeState extends State<LogConsoleOnShake> {
       _detector!.stopListening();
       _detector = null;
     }
-
-    if (_overlayEntry != null) {
-      try {
-        _overlayEntry!.remove();
-      } catch (e) {}
-      _overlayEntry = null;
-    }
-
-    if (widget.key != null) {
-      _activeKeys.remove(widget.key);
-    }
-
     super.dispose();
   }
 }

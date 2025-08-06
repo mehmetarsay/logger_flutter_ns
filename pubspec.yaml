@@ -1,6 +1,6 @@
 name: logger_flutter_ns_v1
 description: A simple plug & play flutter logger console. You can use this plugin for logging on ide or by shaking your phone to see logs on phone.
-version: 1.0.0
+version: 1.0.1
 homepage: https://pub.dev/packages/logger_flutter_ns_v1
 
 environment:

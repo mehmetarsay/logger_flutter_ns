@@ -1,6 +1,7 @@
 library logger_flutter_ns_v1;
 
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 

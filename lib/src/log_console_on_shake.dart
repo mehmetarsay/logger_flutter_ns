@@ -191,10 +191,6 @@ class _LogConsoleOnShakeState extends State<LogConsoleOnShake> {
       _activeKeys.remove(widget.key);
     }
 
-    setState(() {
-      _showDraggableButton = false;
-    });
-
     super.dispose();
   }
 }

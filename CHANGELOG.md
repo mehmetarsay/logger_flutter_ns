@@ -1,3 +1,8 @@
+
+## 0.2.0
+
+* Added button support for opening logs
+
 ## 0.1.1
 
 * update Flutter dependencies, set Flutter >=3.3.0 and Dart to >=2.18.0 <4.0.0

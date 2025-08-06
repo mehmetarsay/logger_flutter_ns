@@ -19,7 +19,8 @@ class ShakeDetector {
 
   int lastShakeTimestamp = DateTime.now().millisecondsSinceEpoch;
 
-  late StreamSubscription streamSubscription;
+  StreamSubscription? streamSubscription;
+  bool _isListening = false;
 
   ShakeDetector({
     required this.onPhoneShake,
@@ -29,38 +30,53 @@ class ShakeDetector {
     this.minShakeCount = 3,
   });
 
-  /// Starts listening to accerelometer events
   void startListening() {
-    streamSubscription = userAccelerometerEvents.listen((event) {
-      var gX = event.x / 9.81;
-      var gY = event.y / 9.81;
-      var gZ = event.z / 9.81;
+    if (_isListening) return;
 
-      // gForce will be close to 1 when there is no movement.
-      var gForce = sqrt(gX * gX + gY * gY + gZ * gZ);
-      if (gForce > shakeThresholdGravity) {
-        var now = DateTime.now().millisecondsSinceEpoch;
-        // ignore shake events too close to each other
-        if (lastShakeTimestamp + minTimeBetweenShakes > now) {
-          return;
-        }
+    try {
+      streamSubscription = userAccelerometerEvents.listen(
+        (event) {
+          var gX = event.x / 9.81;
+          var gY = event.y / 9.81;
+          var gZ = event.z / 9.81;
 
-        // reset the shake count after 1.5 seconds of no shakes
-        if (lastShakeTimestamp + shakeCountResetTime < now) {
-          shakeCount = 0;
-        }
+          var gForce = sqrt(gX * gX + gY * gY + gZ * gZ);
+          if (gForce > shakeThresholdGravity) {
+            var now = DateTime.now().millisecondsSinceEpoch;
+            if (lastShakeTimestamp + minTimeBetweenShakes > now) {
+              return;
+            }
 
-        lastShakeTimestamp = now;
-        if (++shakeCount >= minShakeCount) {
-          shakeCount = 0;
-          onPhoneShake();
-        }
-      }
-    });
+            if (lastShakeTimestamp + shakeCountResetTime < now) {
+              shakeCount = 0;
+            }
+
+            lastShakeTimestamp = now;
+            if (++shakeCount >= minShakeCount) {
+              shakeCount = 0;
+              onPhoneShake();
+            }
+          }
+        },
+        onError: (error) {
+          _isListening = false;
+        },
+      );
+      _isListening = true;
+    } catch (e) {
+      _isListening = false;
+    }
   }
 
-  /// Stops listening to accelerometer events
   void stopListening() {
-    streamSubscription.cancel();
+    if (streamSubscription != null) {
+      try {
+        streamSubscription!.cancel();
+      } catch (e) {}
+      streamSubscription = null;
+    }
+    _isListening = false;
   }
+
+  bool get isListening => _isListening;
 }

@@ -21,6 +21,7 @@ class ExampleView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => LogConsoleOnShake(
+        showDraggableButton: true,
         child: Scaffold(
           appBar: AppBar(
             title: Text('Logger example'),

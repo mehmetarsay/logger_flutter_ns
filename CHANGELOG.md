@@ -1,4 +1,10 @@
 
+## 1.0.2
+
+* Updated share_plus dependency and file sharing implementation
+* Improved JSON log detection and display
+* Enhanced log export functionality
+
 
 ## 1.0.1
 

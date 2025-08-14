@@ -51,7 +51,8 @@ class RenderedEvent {
   final Map<String, dynamic>? jsonData;
   final String? title;
 
-  RenderedEvent(this.id, this.level, this.span, this.lowerCaseText, {this.isJsonResponse = false, this.jsonData, this.title});
+  RenderedEvent(this.id, this.level, this.span, this.lowerCaseText,
+      {this.isJsonResponse = false, this.jsonData, this.title});
 }
 
 class _LogConsoleState extends State<LogConsole> {
@@ -277,11 +278,16 @@ class _LogConsoleState extends State<LogConsole> {
       sb.writeln(event.lines.join('\n'));
     });
     Directory tempDir = await getTemporaryDirectory();
-    final filePath = '${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.log';
+    String name = '${DateTime.now().millisecondsSinceEpoch}.log';
+    final filePath = '${tempDir.path}/$name';
     final file = File(filePath);
 
     await file.writeAsString(sb.toString());
-    Share.shareFiles([filePath]);
+    await SharePlus.instance.share(ShareParams(
+      text: name,
+      subject: name,
+      files: [XFile(filePath)],
+    ));
   }
 
   void _scrollToBottom() async {
@@ -304,12 +310,12 @@ class _LogConsoleState extends State<LogConsole> {
   RenderedEvent _renderEvent(OutputEvent event) {
     var parser = AnsiParser(widget.dark);
     var text = event.lines.join('\n');
-    
+
     // JSON response kontrolü
     bool isJsonResponse = false;
     Map<String, dynamic>? jsonData;
     String? title;
-    
+
     try {
       // Basit JSON tespit - sadece { ile başlayan ve } ile biten
       if (text.trim().startsWith('{') && text.trim().endsWith('}')) {
@@ -331,7 +337,7 @@ class _LogConsoleState extends State<LogConsole> {
                 jsonData = testJson as Map<String, dynamic>;
                 isJsonResponse = true;
                 print('JSON detected in log: ${jsonData.keys.take(3).toList()}');
-                
+
                 // Log başındaki açıklamayı çıkar
                 if (jsonStart > 0) {
                   title = text.substring(0, jsonStart).trim();
@@ -347,14 +353,14 @@ class _LogConsoleState extends State<LogConsole> {
       // JSON parse hatası, normal log olarak göster
       print('JSON parse error: $e');
     }
-    
+
     parser.parse(text);
-    
+
     // Debug için JSON tespit bilgisi
     if (isJsonResponse) {
       print('JSON Response detected: ${jsonData?.keys.take(3).toList()}');
     }
-    
+
     return RenderedEvent(
       _currentId++,
       event.level,
@@ -431,7 +437,7 @@ class _JsonExpandableWidgetState extends State<_JsonExpandableWidget> {
 
   Widget _buildJsonContent() {
     if (widget.logEntry.jsonData == null) return SizedBox.shrink();
-    
+
     return Container(
       margin: EdgeInsets.only(left: 20),
       child: _buildJsonTree(widget.logEntry.jsonData!, 0),
@@ -466,7 +472,7 @@ class _JsonExpandableWidgetState extends State<_JsonExpandableWidget> {
 
   Widget _buildJsonEntry(String key, dynamic value, int depth) {
     bool isExpandable = value is Map || value is List;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -610,7 +616,7 @@ class _JsonExpandableEntryState extends State<_JsonExpandableEntry> {
 
   Widget _buildSimpleEntry(String key, dynamic value) {
     bool isExpandable = value is Map || value is List;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -683,4 +689,4 @@ class LogBar extends StatelessWidget {
       ),
     );
   }
-} 
+}

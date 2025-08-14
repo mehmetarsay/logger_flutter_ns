@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:logger_flutter_ns/logger_flutter_ns.dart';
+import 'package:logger_flutter_ns_v1/logger_flutter_ns.dart';
 
 void main() {
   runApp(MyApp());

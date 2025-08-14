@@ -1,4 +1,4 @@
-part of logger_flutter_ns;
+part of logger_flutter_ns_v1;
 
 ListQueue<OutputEvent> _outputEventBuffer = ListQueue();
 
@@ -26,12 +26,17 @@ class _ConsoleOutput extends LogOutput {
   }
 }
 
+// Clear logs fonksiyonu
+void clearLogs() {
+  _outputEventBuffer.clear();
+}
+
 class LogConsole extends StatefulWidget {
   final bool dark;
   final bool showCloseButton;
   final VoidCallback? onClose;
 
-  LogConsole({this.dark = false, this.showCloseButton = false, this.onClose});
+  const LogConsole({super.key, this.dark = false, this.showCloseButton = false, this.onClose});
 
   @override
   _LogConsoleState createState() => _LogConsoleState();
@@ -42,16 +47,20 @@ class RenderedEvent {
   final Level level;
   final TextSpan span;
   final String lowerCaseText;
+  final bool isJsonResponse;
+  final Map<String, dynamic>? jsonData;
+  final String? title;
 
-  RenderedEvent(this.id, this.level, this.span, this.lowerCaseText);
+  RenderedEvent(this.id, this.level, this.span, this.lowerCaseText,
+      {this.isJsonResponse = false, this.jsonData, this.title});
 }
 
 class _LogConsoleState extends State<LogConsole> {
-  ListQueue<RenderedEvent> _renderedBuffer = ListQueue();
+  final ListQueue<RenderedEvent> _renderedBuffer = ListQueue();
   List<RenderedEvent> _filteredBuffer = [];
 
-  var _scrollController = ScrollController();
-  var _filterController = TextEditingController();
+  final _scrollController = ScrollController();
+  final _filterController = TextEditingController();
 
   double _logFontSize = 14;
 
@@ -152,16 +161,35 @@ class _LogConsoleState extends State<LogConsole> {
             controller: _scrollController,
             itemBuilder: (context, index) {
               var logEntry = _filteredBuffer[index];
-              return Text.rich(
-                logEntry.span,
-                key: Key(logEntry.id.toString()),
-                style: TextStyle(fontSize: _logFontSize),
-              );
+              if (logEntry.isJsonResponse && logEntry.jsonData != null) {
+                return Container(
+                  margin: EdgeInsets.symmetric(vertical: 4),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.blue, width: 1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: _buildExpandableJsonWidget(logEntry),
+                );
+              } else {
+                return Text.rich(
+                  logEntry.span,
+                  key: Key(logEntry.id.toString()),
+                  style: TextStyle(fontSize: _logFontSize),
+                );
+              }
             },
             itemCount: _filteredBuffer.length,
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildExpandableJsonWidget(RenderedEvent logEntry) {
+    return _JsonExpandableWidget(
+      logEntry: logEntry,
+      fontSize: _logFontSize,
+      dark: widget.dark,
     );
   }
 
@@ -192,6 +220,16 @@ class _LogConsoleState extends State<LogConsole> {
             onPressed: () {
               setState(() {
                 _logFontSize--;
+              });
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.delete_sweep),
+            onPressed: () {
+              clearLogs();
+              setState(() {
+                _renderedBuffer.clear();
+                _filteredBuffer.clear();
               });
             },
           ),
@@ -235,16 +273,21 @@ class _LogConsoleState extends State<LogConsole> {
   }
 
   Future<void> _export() async {
-    StringBuffer sb = new StringBuffer();
+    StringBuffer sb = StringBuffer();
     _outputEventBuffer.toList().forEach((event) {
       sb.writeln(event.lines.join('\n'));
     });
     Directory tempDir = await getTemporaryDirectory();
-    final filePath = '${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.log';
+    String name = '${DateTime.now().millisecondsSinceEpoch}.log';
+    final filePath = '${tempDir.path}/$name';
     final file = File(filePath);
 
     await file.writeAsString(sb.toString());
-    Share.shareFiles([filePath]);
+    await SharePlus.instance.share(ShareParams(
+      text: name,
+      subject: name,
+      files: [XFile(filePath)],
+    ));
   }
 
   void _scrollToBottom() async {
@@ -257,7 +300,7 @@ class _LogConsoleState extends State<LogConsole> {
     var scrollPosition = _scrollController.position;
     await _scrollController.animateTo(
       scrollPosition.maxScrollExtent,
-      duration: new Duration(milliseconds: 400),
+      duration: Duration(milliseconds: 400),
       curve: Curves.easeOut,
     );
 
@@ -267,12 +310,65 @@ class _LogConsoleState extends State<LogConsole> {
   RenderedEvent _renderEvent(OutputEvent event) {
     var parser = AnsiParser(widget.dark);
     var text = event.lines.join('\n');
+
+    // JSON response kontrolü
+    bool isJsonResponse = false;
+    Map<String, dynamic>? jsonData;
+    String? title;
+
+    try {
+      // Basit JSON tespit - sadece { ile başlayan ve } ile biten
+      if (text.trim().startsWith('{') && text.trim().endsWith('}')) {
+        jsonData = jsonDecode(text.trim()) as Map<String, dynamic>;
+        isJsonResponse = true;
+        print('JSON detected in log: ${jsonData.keys.take(3).toList()}');
+      } else if (text.contains('{') && text.contains('}')) {
+        // İçinde JSON olan log - daha esnek tespit
+        var jsonStart = text.indexOf('{');
+        var jsonEnd = text.lastIndexOf('}');
+        if (jsonStart != -1 && jsonEnd != -1 && jsonEnd > jsonStart) {
+          var jsonText = text.substring(jsonStart, jsonEnd + 1);
+          // JSON formatını kontrol et - daha esnek
+          if (jsonText.contains('"') && jsonText.contains(':')) {
+            // JSON parse edilebilir mi kontrol et
+            try {
+              var testJson = jsonDecode(jsonText);
+              if (testJson is Map) {
+                jsonData = testJson as Map<String, dynamic>;
+                isJsonResponse = true;
+                print('JSON detected in log: ${jsonData.keys.take(3).toList()}');
+
+                // Log başındaki açıklamayı çıkar
+                if (jsonStart > 0) {
+                  title = text.substring(0, jsonStart).trim();
+                }
+              }
+            } catch (e) {
+              // JSON parse edilemez, devam et
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // JSON parse hatası, normal log olarak göster
+      print('JSON parse error: $e');
+    }
+
     parser.parse(text);
+
+    // Debug için JSON tespit bilgisi
+    if (isJsonResponse) {
+      print('JSON Response detected: ${jsonData?.keys.take(3).toList()}');
+    }
+
     return RenderedEvent(
       _currentId++,
       event.level,
       TextSpan(children: parser.spans),
       text.toLowerCase(),
+      isJsonResponse: isJsonResponse,
+      jsonData: jsonData,
+      title: title,
     );
   }
 
@@ -283,11 +379,291 @@ class _LogConsoleState extends State<LogConsole> {
   }
 }
 
+class _JsonExpandableWidget extends StatefulWidget {
+  final RenderedEvent logEntry;
+  final double fontSize;
+  final bool dark;
+
+  const _JsonExpandableWidget({
+    required this.logEntry,
+    required this.fontSize,
+    required this.dark,
+  });
+
+  @override
+  State<_JsonExpandableWidget> createState() => _JsonExpandableWidgetState();
+}
+
+class _JsonExpandableWidgetState extends State<_JsonExpandableWidget> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: () {
+            setState(() {
+              _isExpanded = !_isExpanded;
+            });
+          },
+          child: Row(
+            children: [
+              Icon(
+                _isExpanded ? Icons.expand_less : Icons.expand_more,
+                size: 20,
+                color: widget.dark ? Colors.white : Colors.black,
+              ),
+              SizedBox(width: 8),
+              Text(
+                widget.logEntry.title ?? 'JSON Response (${widget.logEntry.jsonData?.keys.length ?? 0} keys)',
+                style: TextStyle(
+                  fontSize: widget.fontSize,
+                  fontWeight: FontWeight.bold,
+                  color: widget.dark ? Colors.white : Colors.black,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (_isExpanded) ...[
+          SizedBox(height: 8),
+          _buildJsonContent(),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildJsonContent() {
+    if (widget.logEntry.jsonData == null) return SizedBox.shrink();
+
+    return Container(
+      margin: EdgeInsets.only(left: 20),
+      child: _buildJsonTree(widget.logEntry.jsonData!, 0),
+    );
+  }
+
+  Widget _buildJsonTree(dynamic data, int depth) {
+    if (data is Map<String, dynamic>) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: data.entries.map((entry) {
+          return _buildJsonEntry(entry.key, entry.value, depth);
+        }).toList(),
+      );
+    } else if (data is List) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: data.asMap().entries.map((entry) {
+          return _buildJsonEntry('[${entry.key}]', entry.value, depth);
+        }).toList(),
+      );
+    } else {
+      return Text(
+        data.toString(),
+        style: TextStyle(
+          fontSize: widget.fontSize - 2,
+          color: widget.dark ? Colors.white70 : Colors.black87,
+        ),
+      );
+    }
+  }
+
+  Widget _buildJsonEntry(String key, dynamic value, int depth) {
+    bool isExpandable = value is Map || value is List;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (isExpandable)
+          _JsonExpandableEntry(
+            entryKey: key,
+            value: value,
+            depth: depth,
+            fontSize: widget.fontSize,
+            dark: widget.dark,
+          )
+        else
+          Padding(
+            padding: EdgeInsets.only(left: depth * 16.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$key: ',
+                  style: TextStyle(
+                    fontSize: widget.fontSize - 2,
+                    fontWeight: FontWeight.bold,
+                    color: widget.dark ? Colors.blue[300] : Colors.blue[700],
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    value.toString(),
+                    style: TextStyle(
+                      fontSize: widget.fontSize - 2,
+                      color: widget.dark ? Colors.white70 : Colors.black87,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _JsonExpandableEntry extends StatefulWidget {
+  final String entryKey;
+  final dynamic value;
+  final int depth;
+  final double fontSize;
+  final bool dark;
+
+  const _JsonExpandableEntry({
+    required this.entryKey,
+    required this.value,
+    required this.depth,
+    required this.fontSize,
+    required this.dark,
+  });
+
+  @override
+  State<_JsonExpandableEntry> createState() => _JsonExpandableEntryState();
+}
+
+class _JsonExpandableEntryState extends State<_JsonExpandableEntry> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: () {
+            setState(() {
+              _isExpanded = !_isExpanded;
+            });
+          },
+          child: Padding(
+            padding: EdgeInsets.only(left: widget.depth * 16.0),
+            child: Row(
+              children: [
+                Icon(
+                  _isExpanded ? Icons.expand_less : Icons.expand_more,
+                  size: 16,
+                  color: widget.dark ? Colors.white70 : Colors.black54,
+                ),
+                SizedBox(width: 4),
+                Text(
+                  widget.entryKey,
+                  style: TextStyle(
+                    fontSize: widget.fontSize - 2,
+                    fontWeight: FontWeight.bold,
+                    color: widget.dark ? Colors.blue[300] : Colors.blue[700],
+                  ),
+                ),
+                Text(
+                  widget.value is Map ? ' {...}' : ' [...]',
+                  style: TextStyle(
+                    fontSize: widget.fontSize - 2,
+                    color: widget.dark ? Colors.white54 : Colors.black54,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_isExpanded) ...[
+          SizedBox(height: 4),
+          Padding(
+            padding: EdgeInsets.only(left: (widget.depth + 1) * 16.0),
+            child: _buildExpandedContent(),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildExpandedContent() {
+    if (widget.value is Map<String, dynamic>) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: (widget.value as Map<String, dynamic>).entries.map((entry) {
+          return _buildSimpleEntry(entry.key, entry.value);
+        }).toList(),
+      );
+    } else if (widget.value is List) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: (widget.value as List).asMap().entries.map((entry) {
+          return _buildSimpleEntry('[${entry.key}]', entry.value);
+        }).toList(),
+      );
+    } else {
+      return Text(
+        widget.value.toString(),
+        style: TextStyle(
+          fontSize: widget.fontSize - 2,
+          color: widget.dark ? Colors.white70 : Colors.black87,
+        ),
+      );
+    }
+  }
+
+  Widget _buildSimpleEntry(String key, dynamic value) {
+    bool isExpandable = value is Map || value is List;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (isExpandable)
+          _JsonExpandableEntry(
+            entryKey: key,
+            value: value,
+            depth: widget.depth + 1,
+            fontSize: widget.fontSize,
+            dark: widget.dark,
+          )
+        else
+          Padding(
+            padding: EdgeInsets.only(left: 16.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$key: ',
+                  style: TextStyle(
+                    fontSize: widget.fontSize - 2,
+                    fontWeight: FontWeight.bold,
+                    color: widget.dark ? Colors.blue[300] : Colors.blue[700],
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    value.toString(),
+                    style: TextStyle(
+                      fontSize: widget.fontSize - 2,
+                      color: widget.dark ? Colors.white70 : Colors.black87,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 class LogBar extends StatelessWidget {
   final bool dark;
   final Widget child;
 
-  LogBar({required this.dark, required this.child});
+  const LogBar({super.key, required this.dark, required this.child});
 
   @override
   Widget build(BuildContext context) {

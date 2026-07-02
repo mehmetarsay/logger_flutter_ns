@@ -321,7 +321,7 @@ class _LogConsoleState extends State<LogConsole> {
       if (text.trim().startsWith('{') && text.trim().endsWith('}')) {
         jsonData = jsonDecode(text.trim()) as Map<String, dynamic>;
         isJsonResponse = true;
-        print('JSON detected in log: ${jsonData.keys.take(3).toList()}');
+        // print('JSON detected in log: ${jsonData.keys.take(3).toList()}');
       } else if (text.contains('{') && text.contains('}')) {
         // İçinde JSON olan log - daha esnek tespit
         var jsonStart = text.indexOf('{');
@@ -336,7 +336,7 @@ class _LogConsoleState extends State<LogConsole> {
               if (testJson is Map) {
                 jsonData = testJson as Map<String, dynamic>;
                 isJsonResponse = true;
-                print('JSON detected in log: ${jsonData.keys.take(3).toList()}');
+                // print('JSON detected in log: ${jsonData.keys.take(3).toList()}');
 
                 // Log başındaki açıklamayı çıkar
                 if (jsonStart > 0) {
@@ -351,14 +351,14 @@ class _LogConsoleState extends State<LogConsole> {
       }
     } catch (e) {
       // JSON parse hatası, normal log olarak göster
-      print('JSON parse error: $e');
+      // print('JSON parse error: $e');
     }
 
     parser.parse(text);
 
     // Debug için JSON tespit bilgisi
     if (isJsonResponse) {
-      print('JSON Response detected: ${jsonData?.keys.take(3).toList()}');
+      // print('JSON Response detected: ${jsonData?.keys.take(3).toList()}');
     }
 
     return RenderedEvent(

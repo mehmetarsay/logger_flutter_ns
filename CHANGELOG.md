@@ -1,3 +1,8 @@
+## 1.0.3
+
+* Updated dependencies (intl, logger, path_provider, share_plus, sensors_plus, test)
+* Updated example Android and iOS platform configurations
+
 
 ## 1.0.2
 

@@ -1,3 +1,9 @@
+## 1.0.4
+
+* Downgraded intl dependency to ^0.20.2 for broader compatibility
+* Removed unnecessary debug print logs from the log console
+
+
 ## 1.0.3
 
 * Updated dependencies (intl, logger, path_provider, share_plus, sensors_plus, test)
